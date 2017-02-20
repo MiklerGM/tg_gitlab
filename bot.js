@@ -1,9 +1,19 @@
+var fs = require('fs');
+var path = require('path');
+
 var TelegramBot = require('node-telegram-bot-api');
 
 token = process.env.TOKEN;
 port = process.env.PORT || '8080';
 admin = process.env.ADMIN;
-activeChats = {}; // {repo : [chat1, chat2]}
+subscribers = {}; // {project : [chat1, chat2]}
+subsConfig = path.join(__dirname,'/configs/subscribers.json');
+
+try {
+  subscribers = JSON.parse(fs.readFileSync(subsConfig));
+} catch (err) {
+  console.info('ERROR: Error parsing your subscribers.json');
+}
 
 if (!token){
   console.log('Set token for TelegramBot');
@@ -21,36 +31,43 @@ function adminCheck(msg){
   }
 }
 
+function serialize(){
+  fs.writeFile(subsConfig, JSON.stringify(subscribers),
+    (err) => {if (err) console.log(err)});
+}
+
 bot.onText(/\/gitlab_watch (.+)/, (msg, match) => {
   if (! adminCheck(msg)) return false; 
 
   chatId = msg.chat.id;
-  repo = match[1];
-  if (repo in activeChats) { // TODO check for uniq
-    activeChats[repo].push(chatId);
+  project = match[1];
+  if (project in subscribers) { // TODO check for uniq
+    subscribers[project].push(chatId);
   } else {
-    activeChats[repo] = [chatId];
+    subscribers[project] = [chatId];
   }
-  bot.sendMessage(chatId, `You now watching repo: ${repo}`);
+  serialize();
+  bot.sendMessage(chatId, `You now watching project: ${project}`);
 });
 
 bot.onText(/\/gitlab_forget (.+)/, (msg, match) => {
   if (! adminCheck(msg)) return false; 
   chatId = msg.chat.id;
-  repo = match[1];
-  if (repo in activeChats) {
-    activeChats[repo] = activeChats[repo].reduce((prev,cur) => {
+  project = match[1];
+  if (project in subscribers) {
+    subscribers[project] = subscribers[project].reduce((prev,cur) => {
       if (cur !== chatId) return prev.push(cur);
     },[]);
+    serialize();
   }
 });
 
 bot.onText(/\/gitlab_list/, (msg, match) => {
   chatId = msg.chat.id;
-  Object.keys(activeChats).map(
-    (repo) => activeChats[repo].map(
+  Object.keys(subscribers).map(
+    (project) => subscribers[project].map(
       (chat) => {
-        if (chat === chatId) bot.sendMessage(chatId, `You are subscribed for '${repo}'`);
+        if (chat === chatId) bot.sendMessage(chatId, `You are subscribed for '${project}'`);
       }
   ));
 });
@@ -66,12 +83,12 @@ pushHook = 'Push Hook';
 
 http.createServer(function handleRequest(req, res) {
   function processWebHook(err, body){
-    repoName = body.project.name;
-    if (repoName in activeChats){
+    projectName = body.project.name;
+    if (projectName in subscribers){
       body.commits.map((commit) => {
-        activeChats[repoName].map((chat) => {
+        subscribers[projectName].map((chat) => {
           bot.sendMessage(chat, 
-            `New commit to '${repoName} by ${commit.author.name}'
+            `New commit to '${projectName} by ${commit.author.name}'
             >${commit.message}
             ${commit.url}
             `
