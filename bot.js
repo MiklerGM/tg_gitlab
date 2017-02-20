@@ -5,6 +5,11 @@ port = process.env.PORT || '8080';
 admin = process.env.ADMIN;
 activeChats = {}; // {repo : [chat1, chat2]}
 
+if (!token){
+  console.log('Set token for TelegramBot');
+  process.exit(1);
+}
+
 const bot = new TelegramBot(token, { polling: true });
 
 function adminCheck(msg){
@@ -50,25 +55,34 @@ bot.onText(/\/gitlab_list/, (msg, match) => {
   ));
 });
 
-// EXPRESS 
-const express = require('express');
-const bodyParser = require('body-parser');
+// HTTP server for handling gitlab webhooks
+const http = require('http');
+const jsonBody = require("body/json")
 
 gitlabHeader = 'X-Gitlab-Event';
-// 'Tag Push Hook';
+gitlabHeaderRaw = gitlabHeader.toLowerCase();
+tagPushHook = 'Tag Push Hook';
 pushHook = 'Push Hook';
 
-const app = express();
-app.use(bodyParser.json());
-app.all('*', (req, res) => {
-  header = req.get(gitlabHeader);
-  if (header === pushHook) {
-    Object.keys(activeChats).map(
-      (repo) => activeChats[repo].map(
-        (chat) => bot.sendMessage(chat,`Hook ${repo}`))
-    );
+http.createServer(function handleRequest(req, res) {
+  function processWebHook(err, body){
+    repoName = body.project.name;
+    if (repoName in activeChats){
+      body.commits.map((commit) => {
+        activeChats[repoName].map((chat) => {
+          bot.sendMessage(chat, 
+            `New commit to '${repoName} by ${commit.author.name}'
+            >${commit.message}
+            ${commit.url}
+            `
+          );
+        });
+      });
+    }
+    res.end('ok');
   }
-  res.status(200).end('Ok');
-});
-
-app.listen(process.env.PORT || port);
+  // check for gitlab headers
+  header = gitlabHeaderRaw in req.headers ? req.headers[gitlabHeaderRaw] : '';
+  if (header === pushHook) jsonBody(req, res, processWebHook);
+  res.end('error');
+}).listen(port);
