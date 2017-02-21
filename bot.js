@@ -79,11 +79,13 @@ const jsonBody = require("body/json")
 gitlabHeader = 'X-Gitlab-Event';
 gitlabHeaderRaw = gitlabHeader.toLowerCase();
 tagPushHook = 'Tag Push Hook';
-pushHook = 'Push Hook';
+pushHook = 'System Hook';
+objectKind = 'object_kind';
 
 http.createServer(function handleRequest(req, res) {
-  function processWebHook(err, body){
+  function pushWebHook(body) {
     projectName = body.project.name;
+    console.log('Processing a webhook for repo: ', projectName);
     if (projectName in subscribers){
       body.commits.map((commit) => {
         subscribers[projectName].map((chat) => {
@@ -96,10 +98,15 @@ http.createServer(function handleRequest(req, res) {
         });
       });
     }
+  }
+  function processWebHook(err, body){
+    console.log(body);
+    if (objectKind in body && body[objectKind] === 'push') pushWebHook(body);
     res.end('ok');
   }
   // check for gitlab headers
   header = gitlabHeaderRaw in req.headers ? req.headers[gitlabHeaderRaw] : '';
+  console.log('Get a Request with headers: ', JSON.stringify(req.headers));
   if (header === pushHook) jsonBody(req, res, processWebHook);
   res.end('error');
 }).listen(port);
