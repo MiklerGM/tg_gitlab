@@ -16,14 +16,16 @@ To enable `PUSH HOOK` you need configure web hooks for *each project*
 * Install bot
 
 ### Available commands
-```
-* /gitlab_watch <projectName> // Admin only
+
+`* /gitlab_watch <projectName>` 
   Sending messages about updates for <projectName> to this chat
-* /gitlab_forget <projectName> // Admin only
+
+`* /gitlab_forget <projectName>`
   Do not send messages about <projectName> to this chat
-* /gitlab_list
+
+`* /gitlab_list`
   Show list of subscriptions for updates
-```
+
 
 ### Installation
 ```bash
