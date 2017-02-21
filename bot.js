@@ -10,7 +10,7 @@ subscribers = {}; // {project : [chat1, chat2]}
 subsConfig = path.join(__dirname,'/configs/subscribers.json');
 
 try {
-  if(fs.existsSync(path)) {
+  if(fs.existsSync(subsConfig)) {
     subscribers = JSON.parse(fs.readFileSync(subsConfig));
   } else if (process.env.SUBSCRIBERS) {
     subscribers = JSON.parse(process.env.SUBSCRIBERS);
@@ -93,8 +93,10 @@ http.createServer(function handleRequest(req, res) {
     projectName = body.project.name;
     console.log('Processing a webhook for repo: ', projectName);
     if (projectName in subscribers){
+      console.log('Someone waiting for this hook');
       body.commits.map((commit) => {
         subscribers[projectName].map((chat) => {
+          console.log(`Sending commit info to chat ${chat}`); 
           bot.sendMessage(chat, 
             `New commit to '${projectName} by ${commit.author.name}'
             >${commit.message}
@@ -106,6 +108,7 @@ http.createServer(function handleRequest(req, res) {
     }
   }
   function processWebHook(err, body){
+    if (err) console.log('Parsing body error',err);
     console.log(body);
     if (objectKind in body && body[objectKind] === 'push') pushWebHook(body);
     res.end('ok');
@@ -113,6 +116,7 @@ http.createServer(function handleRequest(req, res) {
   // check for gitlab headers
   header = gitlabHeaderRaw in req.headers ? req.headers[gitlabHeaderRaw] : '';
   console.log('Get a Request with headers: ', JSON.stringify(req.headers));
-  if (header === pushHook) jsonBody(req, res, processWebHook);
+  console.log(`Header: '${header}' === '${pushHook}'`)
+  if (header == pushHook) jsonBody(req, res, processWebHook);
   res.end('error');
 }).listen(port);
