@@ -79,7 +79,8 @@ const jsonBody = require("body/json")
 gitlabHeader = 'X-Gitlab-Event';
 gitlabHeaderRaw = gitlabHeader.toLowerCase();
 tagPushHook = 'Tag Push Hook';
-pushHook = 'System Hook';
+pushHook = 'Push Hook';
+systemHook = 'System Hook';
 objectKind = 'object_kind';
 
 http.createServer(function handleRequest(req, res) {
