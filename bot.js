@@ -10,9 +10,14 @@ subscribers = {}; // {project : [chat1, chat2]}
 subsConfig = path.join(__dirname,'/configs/subscribers.json');
 
 try {
-  subscribers = JSON.parse(fs.readFileSync(subsConfig));
+  if(fs.existsSync(path)) {
+    subscribers = JSON.parse(fs.readFileSync(subsConfig));
+  } else if (process.env.SUBSCRIBERS) {
+    subscribers = JSON.parse(process.env.SUBSCRIBERS);
+  }
 } catch (err) {
   console.info('ERROR: Error parsing your subscribers.json');
+  console.info('Initializing empty subscribers.json');
 }
 
 if (!token){
